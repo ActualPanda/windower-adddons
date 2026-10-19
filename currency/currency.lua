@@ -76,9 +76,9 @@ local function make_table(data)
 end
 
 local function saveData()
-  local fileStr = 'return ' .. make_table(currencyCache, 0) .. '\n'
+  local fileStr = make_table(currencyCache)
   local playerName = windower.ffxi.get_player().name
-  local file = file.new(windower.addon_path .. '\\data\\' .. playerName .. '.lua')
+  local file = file.new('data\\' .. playerName .. '.lua')
 
   if not file:exists() then
     file:create()
@@ -145,7 +145,7 @@ curr all <term>
       end
     end
   else
-    local file = file.new(windower.addon_path .. '\\data\\' .. args[1] .. '.lua')
+    local file = file.new('data\\' .. args[1] .. '.lua')
     if file:exists() then
       local pass, data = pcall(dofile, windower.addon_path .. '\\data\\' .. args[1] .. '.lua')
       if pass then
