@@ -1,10 +1,11 @@
 _addon.name = 'currency'
 _addon.author = 'Cromakre'
-_addon.version = '1.0.1'
+_addon.version = '1.1.0'
 _addon.command = 'curr'
 
-require('tables')
-packets = require('packets')
+require('lists')
+local packets = require('packets')
+local file = require('files')
 
 local incomingCurrencyMenu1 = 0x113
 local incomingCurrencyMenu2 = 0x118
@@ -51,9 +52,51 @@ local function search(searchTerm)
   end
 end
 
+local function encase_key(key)
+  if type(key) == 'number' then
+    return '[' .. tostring(key) .. ']'
+  elseif type(key) == 'string' then
+    return '["' .. key .. '"]'
+  else
+    return tostring(key)
+  end
+end
+
+local function make_table(data)
+  local ret = 'return{'
+  for k, v in pairs(data) do
+    ret = ret .. encase_key(k) .. '='
+    if type(v) == 'table' then
+      ret = ret .. make_table(v) .. ','
+    else
+      ret = ret .. tostring(v) .. ','
+    end
+  end
+  return ret .. '}'
+end
+
+local function saveData()
+  local fileStr = 'return ' .. make_table(currencyCache, 0) .. '\n'
+  local playerName = windower.ffxi.get_player().name
+  local file = file.new(windower.addon_path .. '\\data\\' .. playerName .. '.lua')
+
+  if not file:exists() then
+    file:create()
+  end
+
+  file:write(fileStr)
+  collectgarbage()
+end
+
 windower.register_event('addon command', function(...)
+  if windower.ffxi.get_info().logged_in == false then
+    windower.add_to_chat(4, 'You must be logged in to check currencies.')
+    return
+  end
+
+  local args = L({ ... })
   inject()
-  local searchTerm = stripNames(T({ ... }):concat(' '))
+  local searchTerm = stripNames(L({ ... }):slice(2):concat(' '))
   packetARecieved = false
   packetBRecieved = false
   windower.add_to_chat(4, 'Loading currency...')
@@ -61,7 +104,42 @@ windower.register_event('addon command', function(...)
     -- use this so the game doesn't crash
     coroutine.sleep(0.01)
   end
-  search(searchTerm)
+  saveData()
+
+  if args[1] == 'me' then
+    search(searchTerm)
+  elseif args[1] == 'all' then
+    for _, f in pairs(windower.get_dir(windower.addon_path .. '\\data')) do
+      local name = f:sub(1, -5)
+      if f:sub(-4) == '.lua' then
+        local pass, data = pcall(dofile, windower.addon_path .. '\\data\\' .. f)
+        if pass then
+          for name, val in pairs(data) do
+            currencyCache[name] = val
+          end
+          windower.add_to_chat(4, 'Loaded data for ' .. name)
+          search(searchTerm)
+        else
+          windower.add_to_chat(4, "Couldn't load data for " .. f)
+        end
+      end
+    end
+  else
+    local file = file.new(windower.addon_path .. '\\data\\' .. args[1] .. '.lua')
+    if file:exists() then
+      local pass, data = pcall(dofile, windower.addon_path .. '\\data\\' .. args[1] .. '.lua')
+      if pass then
+        for name, val in pairs(data) do
+          currencyCache[name] = val
+        end
+        search(searchTerm)
+      else
+        windower.add_to_chat(4, "Couldn't load data for " .. args[1])
+      end
+    else
+      windower.add_to_chat(4, "Couldn't find " .. args[1])
+    end
+  end
 end)
 
 windower.register_event('incoming chunk', function(id, original, modified, injected, blocked)
