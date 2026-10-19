@@ -105,27 +105,26 @@ curr me <term>
 > checks the game for currency saves it to a local file and
 curr Cromakre <term>
 > searches for currency that matches <term> for specific character
-> reads from local files so it may not be up to date with the server
 curr all <term>
 > searches for currency that matches <term> for all known characters
-> reads from local files so it may not be up to date with the server
 ]]
     )
     return
   end
 
+  inject()
+  local searchTerm = stripNames(L({ ... }):slice(2):concat(' '))
+  packetARecieved = false
+  packetBRecieved = false
+  windower.add_to_chat(4, 'Loading currency...')
+  while not (packetARecieved and packetBRecieved) do
+    -- use this so the game doesn't crash
+    coroutine.sleep(0.01)
+  end
+  saveData()
+
   if args[1] == 'me' then
-    inject()
-    local searchTerm = stripNames(L({ ... }):slice(2):concat(' '))
-    packetARecieved = false
-    packetBRecieved = false
-    windower.add_to_chat(4, 'Loading currency...')
-    while not (packetARecieved and packetBRecieved) do
-      -- use this so the game doesn't crash
-      coroutine.sleep(0.01)
-    end
     search(searchTerm)
-    saveData()
   elseif args[1] == 'all' then
     for _, f in pairs(windower.get_dir(windower.addon_path .. '\\data')) do
       local name = f:sub(1, -5)
